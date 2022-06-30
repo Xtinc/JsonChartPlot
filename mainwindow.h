@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QFileInfo>
+#include <QTimer>
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -11,6 +12,8 @@ class QMenu;
 class QPlainTextEdit;
 class QSessionManager;
 QT_END_NAMESPACE
+
+class UChart;
 
 class MainWindow : public QMainWindow
 {
@@ -29,6 +32,7 @@ protected:
 
 private slots:
 
+    void timerSlot();
     void open();
     bool saveAs();
 
@@ -45,6 +49,8 @@ private:
     };
 
 private:
+    QTimer mDataTimer;
+    UChart* placeholder_widget;
     QWidget *mainWidget;
     QPlainTextEdit *msgConsole;
 };

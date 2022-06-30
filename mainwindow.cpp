@@ -1,6 +1,7 @@
 #include <QtWidgets>
 #include "mainwindow.h"
 #include "highlighter.h"
+#include "chart.h"
 
 MainWindow::MainWindow()
 {
@@ -14,7 +15,7 @@ MainWindow::MainWindow()
 void MainWindow::constructUI()
 {
     mainWidget = new QWidget;
-    QWidget *placeholder_widget = new QWidget;
+    placeholder_widget = new UChart(this);
     msgConsole = new QPlainTextEdit;
     msgConsole->setReadOnly(true);
     Highlighter *highlighter = new Highlighter(msgConsole->document());
@@ -23,6 +24,13 @@ void MainWindow::constructUI()
     hlayout->addWidget(msgConsole, 1);
     mainWidget->setLayout(hlayout);
     setCentralWidget(mainWidget);
+
+    placeholder_widget->addRandomGraph();
+    placeholder_widget->addRandomGraph();
+    placeholder_widget->addRandomGraph();
+
+    connect(&mDataTimer, SIGNAL(timeout()), this, SLOT(timerSlot()));
+    mDataTimer.start(40);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -159,4 +167,29 @@ bool MainWindow::saveFile(const QString &fileName)
     }
     statusBar()->showMessage(tr("File saved"), 2000);
     return true;
+}
+
+void MainWindow::timerSlot()
+{
+    for (int i = 0; i < placeholder_widget->graphCount(); ++i)
+    {
+        QCPGraph *grh = placeholder_widget->graph(i);
+        AxisTag *tag = placeholder_widget->axisTag(i);
+        grh->addData(grh->dataCount(), qSin(grh->dataCount() / 50.0) + qSin(grh->dataCount() / 50.0 / 0.3843) * 0.25 * i);
+        grh->rescaleValueAxis(false, true);
+        double graph1Value = grh->dataMainValue(grh->dataCount() - 1);
+        tag->updatePosition(graph1Value);
+        tag->setText(QString::number(graph1Value, 'f', 2));
+    }
+    placeholder_widget->xAxis->rescale();
+    placeholder_widget->yAxis->rescale();
+    placeholder_widget->yAxis->setRange(placeholder_widget->yAxis->range().lower, placeholder_widget->yAxis->range().upper);
+    placeholder_widget->xAxis->setRange(placeholder_widget->xAxis->range().upper, 100, Qt::AlignRight);
+
+    // update the vertical axis tag positions and texts to match the rightmost data point of the graphs:
+    // double graph1Value = mGraph1->dataMainValue(mGraph1->dataCount() - 1);
+    // mTag1->updatePosition(graph1Value);
+    // mTag1->setText(QString::number(graph1Value, 'f', 2));
+
+    placeholder_widget->replot();
 }
