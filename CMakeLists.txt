@@ -18,8 +18,7 @@ find_package(Qt5 REQUIRED COMPONENTS Widgets)
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
+        highlighter.cpp
 )
 
 add_executable(JsonChartPlot ${PROJECT_SOURCES})

@@ -2,9 +2,11 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QFileInfo>
 
 QT_BEGIN_NAMESPACE
 class QAction;
+class QWidget;
 class QMenu;
 class QPlainTextEdit;
 class QSessionManager;
@@ -16,35 +18,35 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow();
-
     void loadFile(const QString &fileName);
+    QPlainTextEdit *getConsole() const
+    {
+        return msgConsole;
+    }
 
 protected:
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void newFile();
+
     void open();
-    bool save();
     bool saveAs();
-    void about();
-    void documentWasModified();
-#ifndef QT_NO_SESSIONMANAGER
-    void commitData(QSessionManager &);
-#endif
 
 private:
+    void constructUI();
     void createActions();
     void createStatusBar();
     void readSettings();
     void writeSettings();
-    bool maybeSave();
     bool saveFile(const QString &fileName);
-    void setCurrentFile(const QString &fileName);
-    QString strippedName(const QString &fullFileName);
+    QString strippedName(const QString &fullFileName)
+    {
+        return QFileInfo(fullFileName).fileName();
+    };
 
-    QPlainTextEdit *textEdit;
-    QString curFile;
+private:
+    QWidget *mainWidget;
+    QPlainTextEdit *msgConsole;
 };
 
 #endif
