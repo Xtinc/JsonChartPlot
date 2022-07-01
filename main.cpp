@@ -54,9 +54,6 @@ int main(int argc, char *argv[])
     MainWindow w;
     msgConsole = w.getConsole();
     qInstallMessageHandler(outputMessage);
-    qDebug() << "hello!";
-    qInfo() << "heelo!";
-    qCritical() << "Hello!";
     QFont font;
 	font.setFamily("consolas");
     w.setFont(font);

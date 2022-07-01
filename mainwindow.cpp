@@ -25,9 +25,13 @@ void MainWindow::constructUI()
     mainWidget->setLayout(hlayout);
     setCentralWidget(mainWidget);
 
-    placeholder_widget->addRandomGraph();
-    placeholder_widget->addRandomGraph();
-    placeholder_widget->addRandomGraph();
+    placeholder_widget->addGraph();
+    placeholder_widget->addGraph();
+    placeholder_widget->addGraph();
+    placeholder_widget->addGraph();
+    placeholder_widget->addGraph();
+    placeholder_widget->addGraph();
+    placeholder_widget->startRefresh();
 
     connect(&mDataTimer, SIGNAL(timeout()), this, SLOT(timerSlot()));
     mDataTimer.start(40);
@@ -98,7 +102,7 @@ void MainWindow::readSettings()
     const QByteArray geometry = settings.value("geometry", QByteArray()).toByteArray();
     if (geometry.isEmpty())
     {
-        const QRect availableGeometry = screen()->availableGeometry();
+        const QRect availableGeometry = QApplication::desktop()->availableGeometry();
         resize(availableGeometry.width() / 3, availableGeometry.height() / 2);
         move((availableGeometry.width() - width()) / 2,
              (availableGeometry.height() - height()) / 2);
@@ -171,20 +175,31 @@ bool MainWindow::saveFile(const QString &fileName)
 
 void MainWindow::timerSlot()
 {
+    ++cnt;
     for (int i = 0; i < placeholder_widget->graphCount(); ++i)
     {
         QCPGraph *grh = placeholder_widget->graph(i);
+        /*QCPGraph *grh = placeholder_widget->graph(i);
         AxisTag *tag = placeholder_widget->axisTag(i);
         grh->addData(grh->dataCount(), qSin(grh->dataCount() / 50.0) + qSin(grh->dataCount() / 50.0 / 0.3843) * 0.25 * i);
         grh->rescaleValueAxis(false, true);
         double graph1Value = grh->dataMainValue(grh->dataCount() - 1);
         tag->updatePosition(graph1Value);
         tag->setText(QString::number(graph1Value, 'f', 2));
+        if (i == 0)
+        {
+            placeholder_widget->xAxis->rescale();
+            placeholder_widget->yAxis2->rescale();
+        }
+        else
+        {
+            placeholder_widget->yAxis2->rescale(true);
+            placeholder_widget->xAxis->rescale(true);
+        }*/
+        placeholder_widget->addData(cnt, qSin(cnt / 50.0) + qSin(cnt / 50.0 / 0.3843) * 0.25 * i, i);
     }
-    placeholder_widget->xAxis->rescale();
-    placeholder_widget->yAxis->rescale();
-    placeholder_widget->yAxis->setRange(placeholder_widget->yAxis->range().lower, placeholder_widget->yAxis->range().upper);
-    placeholder_widget->xAxis->setRange(placeholder_widget->xAxis->range().upper, 100, Qt::AlignRight);
+    // placeholder_widget->xAxis->rescale();
+    // placeholder_widget->xAxis->setRange(placeholder_widget->xAxis->range().upper, 100, Qt::AlignRight);
 
     // update the vertical axis tag positions and texts to match the rightmost data point of the graphs:
     // double graph1Value = mGraph1->dataMainValue(mGraph1->dataCount() - 1);

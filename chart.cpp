@@ -1,5 +1,53 @@
 #include "chart.h"
 
+QColor getColorByIndex(int index)
+{
+    QColor color;
+    switch (index)
+    {
+    case 0:
+        color = Qt::black;
+        break;
+    case 1:
+        color = Qt::cyan;
+        break;
+    case 2:
+        color = Qt::darkCyan;
+        break;
+    case 3:
+        color = Qt::red;
+        break;
+    case 4:
+        color = Qt::darkRed;
+        break;
+    case 5:
+        color = Qt::magenta;
+        break;
+    case 6:
+        color = Qt::darkMagenta;
+        break;
+    case 7:
+        color = Qt::green;
+        break;
+    case 8:
+        color = Qt::darkGreen;
+        break;
+    case 9:
+        color = Qt::yellow;
+        break;
+    case 10:
+        color = Qt::darkYellow;
+        break;
+    case 11:
+        color = Qt::blue;
+        break;
+    default:
+        color = Qt::darkBlue;
+        break;
+    }
+    return color;
+}
+
 AxisTag::AxisTag(QCPAxis *parentAxis) : QObject(parentAxis),
                                         mAxis(parentAxis)
 {
@@ -63,20 +111,18 @@ void AxisTag::updatePosition(double value)
     mArrow->end->setCoords(mAxis->offset(), 0);
 }
 
-UChart::UChart(QWidget *parent) : QCustomPlot(parent), GraphCnt(0)
+UChart::UChart(QWidget *parent) : QCustomPlot(parent), GraphCnt(0), RefPeriod(80), Pending(false)
 {
     yAxis->setTickLabels(true);
     yAxis2->setVisible(true);
-    axisRect()->addAxis(QCPAxis::atRight);
-    axisRect()->axis(QCPAxis::atRight, 0)->setPadding(30); // add some padding to have space for tags
-    axisRect()->axis(QCPAxis::atRight, 1)->setPadding(30); // add some padding to have space for tags
+    axisRect()->axis(QCPAxis::atRight, 0)->setPadding(40);
 
     setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes |
-                    QCP::iSelectLegend | QCP::iSelectPlottables);
+                    QCP::iSelectLegend | QCP::iSelectPlottables | QCP::iMultiSelect);
     // axisRect()->setupFullAxesBox();
 
     plotLayout()->insertRow(0);
-    QCPTextElement *title = new QCPTextElement(this, "Interaction Example", QFont("sans", 17, QFont::Bold));
+    QCPTextElement *title = new QCPTextElement(this, "Graph Title", QFont("sans", 12, QFont::Bold));
     plotLayout()->addElement(0, 0, title);
 
     xAxis->setLabel("x Axis");
@@ -89,14 +135,14 @@ UChart::UChart(QWidget *parent) : QCustomPlot(parent), GraphCnt(0)
     legend->setSelectableParts(QCPLegend::spItems); // legend box shall not be selectable, only legend items
 
     // connect slot that ties some axis selections together (especially opposite axes):
-    connect(this, SIGNAL(selectionChangedByUser()), this, SLOT(selectionChanged()));
+    connect(this, &QCustomPlot::selectionChangedByUser, this, &UChart::selectionChanged);
     // connect slots that takes care that when an axis is selected, only that direction can be dragged and zoomed:
     connect(this, SIGNAL(mousePress(QMouseEvent *)), this, SLOT(mousePress()));
     connect(this, SIGNAL(mouseWheel(QWheelEvent *)), this, SLOT(mouseWheel()));
 
     // make bottom and left axes transfer their ranges to top and right axes:
     connect(xAxis, SIGNAL(rangeChanged(QCPRange)), xAxis2, SLOT(setRange(QCPRange)));
-    connect(yAxis, SIGNAL(rangeChanged(QCPRange)), yAxis2, SLOT(setRange(QCPRange)));
+    connect(yAxis2, SIGNAL(rangeChanged(QCPRange)), yAxis, SLOT(setRange(QCPRange)));
 
     // connect some interaction slots:
     connect(this, SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this, SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
@@ -109,6 +155,32 @@ UChart::UChart(QWidget *parent) : QCustomPlot(parent), GraphCnt(0)
     // setup policy and connect slot for context menu popup:
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextMenuRequest(QPoint)));
+
+    // set timeout to refresh plot area.
+    connect(&mTimer, &QTimer::timeout, this, &UChart::refreshPlotArea);
+}
+
+void UChart::addData(double x, double y, int index)
+{
+    if (index < 0 || index > MAX_GRAPH_COUNT - 1)
+    {
+        return;
+    }
+    if (mQueue[index].size() > MAX_CURVE_COUNT)
+    {
+        mQueue[index].removeFirst();
+    }
+    mQueue[index].push_back(QCPGraphData(x, y));
+}
+
+void UChart::startRefresh()
+{
+    mTimer.start();
+}
+
+void UChart::setRefreshPeriod(int period)
+{
+    RefPeriod = period;
 }
 
 void UChart::titleDoubleClick(QMouseEvent *)
@@ -128,7 +200,6 @@ void UChart::titleDoubleClick(QMouseEvent *)
 
 void UChart::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectablePart part)
 {
-    // Set an axis label by double clicking on it
     if (part == QCPAxis::spAxisLabel) // only react when the actual axis label is clicked, not tick label or axis backbone
     {
         bool ok;
@@ -143,7 +214,6 @@ void UChart::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectablePart part)
 
 void UChart::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item)
 {
-    // Rename a graph by double clicking on its legend item
     Q_UNUSED(legend)
     if (item) // only react if item was clicked (user could have clicked on border padding of legend where there is no item, then item is 0)
     {
@@ -207,11 +277,17 @@ void UChart::mousePress()
     // if no axis is selected, both directions may be dragged
 
     if (xAxis->selectedParts().testFlag(QCPAxis::spAxis))
+    {
         axisRect()->setRangeDrag(xAxis->orientation());
+    }
     else if (yAxis->selectedParts().testFlag(QCPAxis::spAxis))
+    {
         axisRect()->setRangeDrag(yAxis->orientation());
+    }
     else
+    {
         axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
+    }
 }
 
 void UChart::mouseWheel()
@@ -227,12 +303,12 @@ void UChart::mouseWheel()
         axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
 }
 
-void UChart::addRandomGraph()
+void UChart::addGraph()
 {
-    if (GraphCnt < 12)
+    if (GraphCnt < MAX_GRAPH_COUNT)
     {
-        mGraph[GraphCnt] = addGraph(xAxis, axisRect()->axis(QCPAxis::atRight, 0));
-        mGraph[GraphCnt]->setPen(QPen(QColor( 50 * GraphCnt, 10 + 50 * GraphCnt, 50 * GraphCnt)));
+        mGraph[GraphCnt] = QCustomPlot::addGraph(xAxis, axisRect()->axis(QCPAxis::atRight, 0));
+        mGraph[GraphCnt]->setPen(QPen(getColorByIndex(GraphCnt)));
         mTag[GraphCnt] = new AxisTag(mGraph[GraphCnt]->valueAxis());
         mTag[GraphCnt]->setPen(mGraph[GraphCnt]->pen());
         replot();
@@ -240,18 +316,21 @@ void UChart::addRandomGraph()
     }
 }
 
-void UChart::removeSelectedGraph()
+void UChart::hideSelectedGraph()
 {
     if (selectedGraphs().size() > 0)
     {
-        removeGraph(selectedGraphs().first());
+        selectedGraphs().first()->setVisible(false);
         replot();
     }
 }
 
-void UChart::removeAllGraphs()
+void UChart::showAllGraphs()
 {
-    clearGraphs();
+    for (int i = 0; i < graphCount(); ++i)
+    {
+        graph(i)->setVisible(true);
+    }
     replot();
 }
 
@@ -270,11 +349,24 @@ void UChart::contextMenuRequest(QPoint pos)
     }
     else // general context menu on graphs requested
     {
-        menu->addAction("Add random graph", this, SLOT(addRandomGraph()));
+        menu->addAction("Add graph", this, SLOT(addGraph()));
         if (selectedGraphs().size() > 0)
-            menu->addAction("Remove selected graph", this, SLOT(removeSelectedGraph()));
+        {
+            menu->addAction("Hide selected graph", this, SLOT(hideSelectedGraph()));
+            QAction *saveAct = new QAction("Save Selected Datas", this);
+            connect(saveAct, &QAction::triggered, this, [&]()
+                    { saveCurveData(selectedGraphs()); });
+            menu->addAction(saveAct);
+        }
         if (graphCount() > 0)
-            menu->addAction("Remove all graphs", this, SLOT(removeAllGraphs()));
+        {
+            QAction *PendingAct = new QAction("Pending", this);
+            PendingAct->setCheckable(true);
+            menu->addAction(PendingAct);
+            connect(PendingAct, &QAction::triggered, this, [this]()
+                    { Pending = !Pending; });
+            menu->addAction("Show all graphs", this, SLOT(showAllGraphs()));
+        }
     }
 
     menu->popup(mapToGlobal(pos));
@@ -300,4 +392,77 @@ void UChart::graphClicked(QCPAbstractPlottable *plottable, int dataIndex)
     // usually it's better to first check whether interface1D() returns non-zero, and only then use it.
     double dataValue = plottable->interface1D()->dataMainValue(dataIndex);
     QString message = QString("Clicked on graph '%1' at data point #%2 with value %3.").arg(plottable->name()).arg(dataIndex).arg(dataValue);
+    emit graphClickedMsg(message);
+}
+
+void UChart::refreshPlotArea()
+{
+    if (!Pending)
+    {
+        for (int i = 0; i < graphCount(); ++i)
+        {
+            QCPGraph *grh = graph(i);
+            AxisTag *tag = axisTag(i);
+            grh->data()->set(mQueue[i], false);
+            grh->rescaleValueAxis(false, true);
+            double graph1Value = grh->dataMainValue(grh->dataCount() - 1);
+            tag->updatePosition(graph1Value);
+            tag->setText(QString::number(graph1Value, 'f', 2));
+            if (i == 0)
+            {
+                xAxis->rescale();
+                yAxis2->rescale();
+            }
+            else
+            {
+                yAxis2->rescale(true);
+                xAxis->rescale(true);
+            }
+        }
+        xAxis->setRange(xAxis->range().upper, 100, Qt::AlignRight);
+        replot();
+    }
+    mTimer.start(RefPeriod);
+}
+
+void UChart::saveCurveData(const QList<QCPGraph *> &idxseq)
+{
+    auto filename = QFileDialog::getSaveFileName(this, "Save Plot data", "./", "Text file(*.txt)");
+    if (filename.isEmpty())
+    {
+        return;
+    }
+    QFile qfile(filename);
+    if (!qfile.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        return;
+    }
+    QTextStream qstream(&qfile);
+    qstream.setFieldWidth(8);
+    qstream.setNumberFlags(QTextStream::ForceSign);
+    qstream.setRealNumberNotation(QTextStream::ScientificNotation);
+    for (const auto &i : idxseq)
+    {
+        qstream << i->name() << "     ";
+    }
+    qstream << "\n";
+    int maxCount = 0;
+    for (const auto &i : idxseq)
+    {
+        maxCount = qMax(maxCount, i->data()->size());
+    }
+    for (auto i = 0; i < maxCount; ++i)
+    {
+        for (const auto &j : idxseq)
+        {
+            auto iter = j->data()->at(i);
+            auto iend = j->data()->end();
+            if (iter != iend)
+            {
+                qstream << iter->key << " " << iter->value << " ";
+            }
+        }
+        qstream << "\n";
+    }
+    qfile.close();
 }

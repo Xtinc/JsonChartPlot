@@ -4,6 +4,9 @@
 #include "qcustomplot.h"
 #include <QObject>
 
+constexpr int MAX_GRAPH_COUNT = 12;
+constexpr int MAX_CURVE_COUNT = 100;
+
 class AxisTag : public QObject
 {
     Q_OBJECT
@@ -36,17 +39,23 @@ class UChart : public QCustomPlot
     Q_OBJECT
 public:
     UChart(QWidget *parent = nullptr);
-    AxisTag *axisTag(int index) const
-    {
-        return index < GraphCnt ? mTag[index] : nullptr;
-    };
+    void addData(double x, double y, int index);
+    void setRefreshPeriod(int period);
+
+signals:
+    void graphClickedMsg(const QString &msg);
 public slots:
-    void addRandomGraph();
+    void addGraph();
+    void startRefresh();
 
 private:
-    QPointer<QCPGraph> mGraph[12];
-    QPointer<AxisTag> mTag[12];
     int GraphCnt;
+    int RefPeriod;
+    bool Pending;
+    QTimer mTimer;
+    QVector<QCPGraphData> mQueue[MAX_GRAPH_COUNT];
+    QPointer<QCPGraph> mGraph[MAX_GRAPH_COUNT];
+    QPointer<AxisTag> mTag[MAX_GRAPH_COUNT];
 
 private slots:
     void titleDoubleClick(QMouseEvent *event);
@@ -55,11 +64,17 @@ private slots:
     void selectionChanged();
     void mousePress();
     void mouseWheel();
-    void removeSelectedGraph();
-    void removeAllGraphs();
+    void hideSelectedGraph();
+    void showAllGraphs();
     void contextMenuRequest(QPoint pos);
     void moveLegend();
     void graphClicked(QCPAbstractPlottable *plottable, int dataIndex);
+    void refreshPlotArea();
+    void saveCurveData(const QList<QCPGraph*>& indexSeq);
+    AxisTag *axisTag(int index) const
+    {
+        return index < GraphCnt ? mTag[index] : nullptr;
+    };
 };
 
 #endif

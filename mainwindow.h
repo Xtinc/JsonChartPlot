@@ -49,8 +49,9 @@ private:
     };
 
 private:
+    int cnt = 0;
     QTimer mDataTimer;
-    UChart* placeholder_widget;
+    UChart *placeholder_widget;
     QWidget *mainWidget;
     QPlainTextEdit *msgConsole;
 };
