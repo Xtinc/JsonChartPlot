@@ -111,71 +111,54 @@ void AxisTag::updatePosition(double value)
     mArrow->end->setCoords(mAxis->offset(), 0);
 }
 
-UChart::UChart(QWidget *parent) : QCustomPlot(parent), GraphCnt(0), RefPeriod(80), Pending(false)
+UChart::UChart(QWidget *parent, const QString &str, const QString &xtitle, const QString &ytitle)
+    : QCustomPlot(parent), GraphCnt(0), RefPeriod(80), CurveCnt(MAX_CURVE_COUNT), Pending(false), title(this, str)
 {
     yAxis->setTickLabels(true);
     yAxis2->setVisible(true);
+
     axisRect()->axis(QCPAxis::atRight, 0)->setPadding(40);
 
     setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes |
                     QCP::iSelectLegend | QCP::iSelectPlottables | QCP::iMultiSelect);
-    // axisRect()->setupFullAxesBox();
 
     plotLayout()->insertRow(0);
-    QCPTextElement *title = new QCPTextElement(this, "Graph Title", QFont("sans", 12, QFont::Bold));
-    plotLayout()->addElement(0, 0, title);
+    plotLayout()->addElement(0, 0, &title);
 
-    xAxis->setLabel("x Axis");
-    yAxis->setLabel("y Axis");
     legend->setVisible(true);
-    QFont legendFont = font();
-    legendFont.setPointSize(10);
-    legend->setFont(legendFont);
-    legend->setSelectedFont(legendFont);
-    legend->setSelectableParts(QCPLegend::spItems); // legend box shall not be selectable, only legend items
+    legend->setSelectableParts(QCPLegend::spItems);
 
-    // connect slot that ties some axis selections together (especially opposite axes):
-    connect(this, &QCustomPlot::selectionChangedByUser, this, &UChart::selectionChanged);
-    // connect slots that takes care that when an axis is selected, only that direction can be dragged and zoomed:
-    connect(this, SIGNAL(mousePress(QMouseEvent *)), this, SLOT(mousePress()));
-    connect(this, SIGNAL(mouseWheel(QWheelEvent *)), this, SLOT(mouseWheel()));
-
-    // make bottom and left axes transfer their ranges to top and right axes:
-    connect(xAxis, SIGNAL(rangeChanged(QCPRange)), xAxis2, SLOT(setRange(QCPRange)));
-    connect(yAxis2, SIGNAL(rangeChanged(QCPRange)), yAxis, SLOT(setRange(QCPRange)));
-
-    // connect some interaction slots:
-    connect(this, SIGNAL(axisDoubleClick(QCPAxis *, QCPAxis::SelectablePart, QMouseEvent *)), this, SLOT(axisLabelDoubleClick(QCPAxis *, QCPAxis::SelectablePart)));
-    connect(this, SIGNAL(legendDoubleClick(QCPLegend *, QCPAbstractLegendItem *, QMouseEvent *)), this, SLOT(legendDoubleClick(QCPLegend *, QCPAbstractLegendItem *)));
-    connect(title, SIGNAL(doubleClicked(QMouseEvent *)), this, SLOT(titleDoubleClick(QMouseEvent *)));
-
-    // connect slot that shows a message in the status bar when a graph is clicked:
-    connect(this, SIGNAL(plottableClick(QCPAbstractPlottable *, int, QMouseEvent *)), this, SLOT(graphClicked(QCPAbstractPlottable *, int)));
-
-    // setup policy and connect slot for context menu popup:
     setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(this, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(contextMenuRequest(QPoint)));
 
-    // set timeout to refresh plot area.
+    connect(this, &QCustomPlot::selectionChangedByUser, this, &UChart::selectionChanged);
+    connect(this, &QCustomPlot::mousePress, this, &UChart::mousePress);
+    connect(this, &QCustomPlot::mouseWheel, this, &UChart::mouseWheel);
+    connect(xAxis, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), xAxis2, QOverload<const QCPRange &>::of(&QCPAxis::setRange));
+    connect(yAxis2, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), yAxis, QOverload<const QCPRange &>::of(&QCPAxis::setRange));
+    connect(this, &QCustomPlot::axisDoubleClick, this, &UChart::axisLabelDoubleClick);
+    connect(this, &QCustomPlot::legendDoubleClick, this, &UChart::legendDoubleClick);
+    connect(&title, &QCPTextElement::doubleClicked, this, &UChart::titleDoubleClick);
+    connect(this, &UChart::plottableClick, this, &UChart::graphClicked);
+    connect(this, &UChart::customContextMenuRequested, this, &UChart::contextMenuRequest);
     connect(&mTimer, &QTimer::timeout, this, &UChart::refreshPlotArea);
+
+    xAxis->setLabel(xtitle);
+    yAxis->setLabel(ytitle);
+
+    mTimer.start(RefPeriod);
 }
 
 void UChart::addData(double x, double y, int index)
 {
-    if (index < 0 || index > MAX_GRAPH_COUNT - 1)
+    if (index < 0 || index > CurveCnt - 1)
     {
         return;
     }
-    if (mQueue[index].size() > MAX_CURVE_COUNT)
+    if (mQueue[index].size() > CurveCnt)
     {
         mQueue[index].removeFirst();
     }
     mQueue[index].push_back(QCPGraphData(x, y));
-}
-
-void UChart::startRefresh()
-{
-    mTimer.start();
 }
 
 void UChart::setRefreshPeriod(int period)
@@ -189,7 +172,7 @@ void UChart::titleDoubleClick(QMouseEvent *)
     {
         // Set the plot title by double clicking on it
         bool ok;
-        QString newTitle = QInputDialog::getText(this, "QCustomPlot example", "New plot title:", QLineEdit::Normal, title->text(), &ok);
+        QString newTitle = QInputDialog::getText(this, "UChart", "New plot title:", QLineEdit::Normal, title->text(), &ok);
         if (ok)
         {
             title->setText(newTitle);
@@ -203,7 +186,7 @@ void UChart::axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectablePart part)
     if (part == QCPAxis::spAxisLabel) // only react when the actual axis label is clicked, not tick label or axis backbone
     {
         bool ok;
-        QString newLabel = QInputDialog::getText(this, "QCustomPlot example", "New axis label:", QLineEdit::Normal, axis->label(), &ok);
+        QString newLabel = QInputDialog::getText(this, "UChart", "New axis label:", QLineEdit::Normal, axis->label(), &ok);
         if (ok)
         {
             axis->setLabel(newLabel);
@@ -219,7 +202,7 @@ void UChart::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item)
     {
         QCPPlottableLegendItem *plItem = qobject_cast<QCPPlottableLegendItem *>(item);
         bool ok;
-        QString newName = QInputDialog::getText(this, "QCustomPlot example", "New graph name:", QLineEdit::Normal, plItem->plottable()->name(), &ok);
+        QString newName = QInputDialog::getText(this, "UChart", "New graph name:", QLineEdit::Normal, plItem->plottable()->name(), &ok);
         if (ok)
         {
             plItem->plottable()->setName(newName);
@@ -230,20 +213,7 @@ void UChart::legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item)
 
 void UChart::selectionChanged()
 {
-    /*
-     normally, axis base line, axis tick labels and axis labels are selectable separately, but we want
-     the user only to be able to select the axis as a whole, so we tie the selected states of the tick labels
-     and the axis base line together. However, the axis label shall be selectable individually.
 
-     The selection state of the left and right axes shall be synchronized as well as the state of the
-     bottom and top axes.
-
-     Further, we want to synchronize the selection of the graphs with the selection state of the respective
-     legend item belonging to that graph. So the user can select a graph by either clicking on the graph itself
-     or on its legend item.
-    */
-
-    // make top and bottom axes be selected synchronously, and handle axis and tick labels as one selectable object:
     if (xAxis->selectedParts().testFlag(QCPAxis::spAxis) || xAxis->selectedParts().testFlag(QCPAxis::spTickLabels) ||
         xAxis2->selectedParts().testFlag(QCPAxis::spAxis) || xAxis2->selectedParts().testFlag(QCPAxis::spTickLabels))
     {
@@ -258,7 +228,6 @@ void UChart::selectionChanged()
         yAxis->setSelectedParts(QCPAxis::spAxis | QCPAxis::spTickLabels);
     }
 
-    // synchronize selection of graphs with selection of corresponding legend items:
     for (int i = 0; i < graphCount(); ++i)
     {
         QCPGraph *grh = graph(i);
@@ -273,9 +242,6 @@ void UChart::selectionChanged()
 
 void UChart::mousePress()
 {
-    // if an axis is selected, only allow the direction of that axis to be dragged
-    // if no axis is selected, both directions may be dragged
-
     if (xAxis->selectedParts().testFlag(QCPAxis::spAxis))
     {
         axisRect()->setRangeDrag(xAxis->orientation());
@@ -339,51 +305,22 @@ void UChart::contextMenuRequest(QPoint pos)
     QMenu *menu = new QMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
 
-    if (legend->selectTest(pos, false) >= 0) // context menu on legend requested
+    if (legend->selectTest(pos, false) >= 0)
     {
-        menu->addAction("Move to top left", this, SLOT(moveLegend()))->setData((int)(Qt::AlignTop | Qt::AlignLeft));
-        menu->addAction("Move to top center", this, SLOT(moveLegend()))->setData((int)(Qt::AlignTop | Qt::AlignHCenter));
-        menu->addAction("Move to top right", this, SLOT(moveLegend()))->setData((int)(Qt::AlignTop | Qt::AlignRight));
-        menu->addAction("Move to bottom right", this, SLOT(moveLegend()))->setData((int)(Qt::AlignBottom | Qt::AlignRight));
-        menu->addAction("Move to bottom left", this, SLOT(moveLegend()))->setData((int)(Qt::AlignBottom | Qt::AlignLeft));
+        constructLegendMenu(menu);
     }
-    else // general context menu on graphs requested
+    else
     {
-        menu->addAction("Add graph", this, SLOT(addGraph()));
-        if (selectedGraphs().size() > 0)
-        {
-            menu->addAction("Hide selected graph", this, SLOT(hideSelectedGraph()));
-            QAction *saveAct = new QAction("Save Selected Datas", this);
-            connect(saveAct, &QAction::triggered, this, [&]()
-                    { saveCurveData(selectedGraphs()); });
-            menu->addAction(saveAct);
-        }
-        if (graphCount() > 0)
-        {
-            QAction *PendingAct = new QAction("Pending", this);
-            PendingAct->setCheckable(true);
-            menu->addAction(PendingAct);
-            connect(PendingAct, &QAction::triggered, this, [this]()
-                    { Pending = !Pending; });
-            menu->addAction("Show all graphs", this, SLOT(showAllGraphs()));
-        }
+        constructNormalMenu(menu);
     }
 
     menu->popup(mapToGlobal(pos));
 }
 
-void UChart::moveLegend()
+void UChart::moveLegend(int orientation)
 {
-    if (QAction *contextAction = qobject_cast<QAction *>(sender())) // make sure this slot is really called by a context menu action, so it carries the data we need
-    {
-        bool ok;
-        int dataInt = contextAction->data().toInt(&ok);
-        if (ok)
-        {
-            axisRect()->insetLayout()->setInsetAlignment(0, (Qt::Alignment)dataInt);
-            replot();
-        }
-    }
+    axisRect()->insetLayout()->setInsetAlignment(0, (Qt::Alignment)orientation);
+    replot();
 }
 
 void UChart::graphClicked(QCPAbstractPlottable *plottable, int dataIndex)
@@ -465,4 +402,45 @@ void UChart::saveCurveData(const QList<QCPGraph *> &idxseq)
         qstream << "\n";
     }
     qfile.close();
+}
+
+void UChart::constructLegendMenu(QMenu *menu)
+{
+    menu->addAction("Move to top left", this, [&]()
+                    { moveLegend((int)(Qt::AlignTop | Qt::AlignLeft)); });
+    menu->addAction("Move to top center", this, [&]()
+                    { moveLegend((int)(Qt::AlignTop | Qt::AlignHCenter)); });
+    menu->addAction("Move to top right", this, [&]()
+                    { moveLegend((int)(Qt::AlignTop | Qt::AlignRight)); });
+    menu->addAction("Move to bottom right", this, [&]()
+                    { moveLegend((int)(Qt::AlignBottom | Qt::AlignRight)); });
+    menu->addAction("Move to bottom left", this, [&]()
+                    { moveLegend((int)(Qt::AlignBottom | Qt::AlignLeft)); });
+}
+
+void UChart::constructNormalMenu(QMenu *menu)
+{
+    menu->addAction("Add graph", this, [&]()
+                    { addGraph(); });
+    menu->addAction("Show all graphs", this, [&]()
+                    { showAllGraphs(); });
+    if (selectedGraphs().size() > 0)
+    {
+        menu->addAction("Hide selected graph", this, [&]()
+                        { hideSelectedGraph(); });
+        menu->addAction("Save Selected Datas", this, [&]()
+                        { saveCurveData(selectedGraphs()); });
+    }
+    if (graphCount() > 0)
+    {
+        menu->addAction("Pending", this, [&]()
+                        { Pending = !Pending; });
+        menu->addAction("Save graph", this, [&]()
+                        {
+            auto filename = QFileDialog::getSaveFileName(this, "Save graph", "./", "Graph file(*.png)");
+            if(filename.isEmpty()){
+                return;
+            }
+            savePng(filename); });
+    }
 }

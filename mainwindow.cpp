@@ -31,7 +31,6 @@ void MainWindow::constructUI()
     placeholder_widget->addGraph();
     placeholder_widget->addGraph();
     placeholder_widget->addGraph();
-    placeholder_widget->startRefresh();
 
     connect(&mDataTimer, SIGNAL(timeout()), this, SLOT(timerSlot()));
     mDataTimer.start(40);
@@ -102,7 +101,7 @@ void MainWindow::readSettings()
     const QByteArray geometry = settings.value("geometry", QByteArray()).toByteArray();
     if (geometry.isEmpty())
     {
-        const QRect availableGeometry = QApplication::desktop()->availableGeometry();
+        const QRect availableGeometry = QGuiApplication::screens().first()->availableGeometry();
         resize(availableGeometry.width() / 3, availableGeometry.height() / 2);
         move((availableGeometry.width() - width()) / 2,
              (availableGeometry.height() - height()) / 2);

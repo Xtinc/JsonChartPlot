@@ -38,39 +38,55 @@ class UChart : public QCustomPlot
 {
     Q_OBJECT
 public:
-    UChart(QWidget *parent = nullptr);
+    UChart(QWidget *parent = nullptr,const QString &title = "UChart", const QString &xtitle = "xAxis", const QString &ytitle = "yAxis");
     void addData(double x, double y, int index);
+    void addGraph();
+    void setMaxCurveCount(int counts);
     void setRefreshPeriod(int period);
+    void setTitle(const QString &str)
+    {
+        title.setText(str);
+    }
+    void setXAxisTitle(const QString &title)
+    {
+        xAxis->setLabel(title);
+    }
+    void setYAxisTitle(const QString &title)
+    {
+        yAxis->setLabel(title);
+    }
 
 signals:
     void graphClickedMsg(const QString &msg);
-public slots:
-    void addGraph();
-    void startRefresh();
 
 private:
     int GraphCnt;
     int RefPeriod;
+    int CurveCnt;
     bool Pending;
     QTimer mTimer;
+    QCPTextElement title;
     QVector<QCPGraphData> mQueue[MAX_GRAPH_COUNT];
     QPointer<QCPGraph> mGraph[MAX_GRAPH_COUNT];
     QPointer<AxisTag> mTag[MAX_GRAPH_COUNT];
 
-private slots:
-    void titleDoubleClick(QMouseEvent *event);
+private:
     void axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectablePart part);
+    void contextMenuRequest(QPoint pos);
+    void constructLegendMenu(QMenu *menu);
+    void constructNormalMenu(QMenu *menu);
+    void graphClicked(QCPAbstractPlottable *plottable, int dataIndex);
+    void hideSelectedGraph();
     void legendDoubleClick(QCPLegend *legend, QCPAbstractLegendItem *item);
-    void selectionChanged();
     void mousePress();
     void mouseWheel();
-    void hideSelectedGraph();
-    void showAllGraphs();
-    void contextMenuRequest(QPoint pos);
-    void moveLegend();
-    void graphClicked(QCPAbstractPlottable *plottable, int dataIndex);
+    void moveLegend(int flag);
     void refreshPlotArea();
-    void saveCurveData(const QList<QCPGraph*>& indexSeq);
+    void saveCurveData(const QList<QCPGraph *> &indexSeq);
+    void selectionChanged();
+    void showAllGraphs();
+    void titleDoubleClick(QMouseEvent *event);
+
     AxisTag *axisTag(int index) const
     {
         return index < GraphCnt ? mTag[index] : nullptr;
