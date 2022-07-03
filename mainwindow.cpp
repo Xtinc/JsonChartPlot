@@ -1,4 +1,7 @@
 #include <QtWidgets>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include "mainwindow.h"
 #include "highlighter.h"
 #include "chart.h"
@@ -33,7 +36,7 @@ void MainWindow::constructUI()
     placeholder_widget->addGraph();
 
     connect(&mDataTimer, SIGNAL(timeout()), this, SLOT(timerSlot()));
-    mDataTimer.start(40);
+    mDataTimer.start(10);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -130,13 +133,6 @@ void MainWindow::loadFile(const QString &fileName)
     }
 
     QTextStream in(&file);
-#ifndef QT_NO_CURSOR
-    QGuiApplication::setOverrideCursor(Qt::WaitCursor);
-#endif
-    msgConsole->setPlainText(in.readAll());
-#ifndef QT_NO_CURSOR
-    QGuiApplication::restoreOverrideCursor();
-#endif
     statusBar()->showMessage(tr("File loaded"), 2000);
 }
 

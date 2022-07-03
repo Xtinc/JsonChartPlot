@@ -117,7 +117,7 @@ UChart::UChart(QWidget *parent, const QString &str, const QString &xtitle, const
     yAxis->setTickLabels(true);
     yAxis2->setVisible(true);
 
-    axisRect()->axis(QCPAxis::atRight, 0)->setPadding(40);
+    axisRect()->axis(QCPAxis::atRight, 0)->setPadding(60);
 
     setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectAxes |
                     QCP::iSelectLegend | QCP::iSelectPlottables | QCP::iMultiSelect);
@@ -145,7 +145,7 @@ UChart::UChart(QWidget *parent, const QString &str, const QString &xtitle, const
     xAxis->setLabel(xtitle);
     yAxis->setLabel(ytitle);
 
-    mTimer.start(RefPeriod);
+    mTimer.start(100);
 }
 
 void UChart::addData(double x, double y, int index)
@@ -342,9 +342,12 @@ void UChart::refreshPlotArea()
             AxisTag *tag = axisTag(i);
             grh->data()->set(mQueue[i], false);
             grh->rescaleValueAxis(false, true);
-            double graph1Value = grh->dataMainValue(grh->dataCount() - 1);
-            tag->updatePosition(graph1Value);
-            tag->setText(QString::number(graph1Value, 'f', 2));
+            if (grh->dataCount() > 0)
+            {
+                double graph1Value = grh->dataMainValue(grh->dataCount() - 1);
+                tag->updatePosition(graph1Value);
+                tag->setText(QString::number(graph1Value, 'f', 2));
+            }
             if (i == 0)
             {
                 xAxis->rescale();

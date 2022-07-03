@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     msgConsole = w.getConsole();
     qInstallMessageHandler(outputMessage);
     QFont font;
-	font.setFamily("consolas");
+    font.setFamily("consolas");
     w.setFont(font);
     w.show();
     return a.exec();
