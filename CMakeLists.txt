@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_PREFIX_PATH "C:/Qt/5.15.2/msvc2019_64/lib/cmake/Qt5")
 
-find_package(Qt5 REQUIRED COMPONENTS Widgets PrintSupport)
+find_package(Qt5 REQUIRED COMPONENTS Widgets PrintSupport Network)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -21,11 +21,12 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         highlighter.cpp
         qcustomplot.cpp
+        tcpserver.cpp
 )
 
 add_executable(JsonChartPlot ${PROJECT_SOURCES})
 
-target_link_libraries(JsonChartPlot PRIVATE Qt5::Widgets Qt5::PrintSupport)
+target_link_libraries(JsonChartPlot PRIVATE Qt5::Widgets Qt5::PrintSupport Qt5::Network)
 
 set_target_properties(JsonChartPlot PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
