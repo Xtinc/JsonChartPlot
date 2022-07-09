@@ -22,6 +22,7 @@ set(PROJECT_SOURCES
         highlighter.cpp
         qcustomplot.cpp
         tcpserver.cpp
+        mdichild.cpp
 )
 
 add_executable(JsonChartPlot ${PROJECT_SOURCES})

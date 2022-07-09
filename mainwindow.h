@@ -2,18 +2,15 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QFileInfo>
-#include <QTimer>
 
+class MdiChild;
 QT_BEGIN_NAMESPACE
 class QAction;
-class QWidget;
 class QMenu;
+class QMdiArea;
 class QPlainTextEdit;
-class QSessionManager;
+class QMdiSubWindow;
 QT_END_NAMESPACE
-
-class UChart;
 
 class MainWindow : public QMainWindow
 {
@@ -21,39 +18,56 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow();
-    void loadFile(const QString &fileName);
-    QPlainTextEdit *getConsole() const
-    {
-        return msgConsole;
-    }
+
+    bool openFile(const QString &fileName);
+
+    QPlainTextEdit *getConsole() const;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
 
-private slots:
-
-    void timerSlot();
+private:
+    void openConnection();
     void open();
-    bool saveAs();
+    void updateRecentFileActions();
+    void openRecentFile();
+    void about();
+    void updateMenus();
+    void updateWindowMenu();
+    MdiChild *createMdiChild();
 
 private:
-    void constructUI();
+    enum
+    {
+        MaxRecentFiles = 5
+    };
+
     void createActions();
     void createStatusBar();
     void readSettings();
     void writeSettings();
-    bool saveFile(const QString &fileName);
-    QString strippedName(const QString &fullFileName)
-    {
-        return QFileInfo(fullFileName).fileName();
-    };
+    bool loadFile(const QString &fileName);
+    static bool hasRecentFiles();
+    void prependToRecentFiles(const QString &fileName);
+    void setRecentFilesVisible(bool visible);
+    MdiChild *activeMdiChild() const;
+    QMdiSubWindow *findMdiChild(const QString &fileName) const;
 
-private:
-    int cnt = 0;
-    QTimer mDataTimer;
-    UChart *placeholder_widget;
-    QWidget *mainWidget;
+    QMdiArea *mdiArea;
     QPlainTextEdit *msgConsole;
+
+    QMenu *windowMenu;
+    QAction *openConnAct;
+    QAction *recentFileActs[MaxRecentFiles];
+    QAction *recentFileSeparator;
+    QAction *recentFileSubMenuAct;
+    QAction *closeAct;
+    QAction *closeAllAct;
+    QAction *tileAct;
+    QAction *cascadeAct;
+    QAction *nextAct;
+    QAction *previousAct;
+    QAction *windowMenuSeparatorAct;
 };
 
 #endif

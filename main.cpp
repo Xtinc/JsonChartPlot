@@ -4,6 +4,8 @@
 #include <QDebug>
 #include <QPlainTextEdit>
 #include <QDateTime>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
 
 QPlainTextEdit *msgConsole = nullptr;
 
@@ -50,13 +52,29 @@ void outputMessage(QtMsgType type, const QMessageLogContext &context, const QStr
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    MainWindow w;
-    msgConsole = w.getConsole();
+    QApplication app(argc, argv);
+    QCoreApplication::setApplicationName("MDI Example");
+    QCoreApplication::setOrganizationName("QtProject");
+    QCoreApplication::setApplicationVersion(QT_VERSION_STR);
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Qt MDI Example");
+    parser.addHelpOption();
+    parser.addVersionOption();
+    parser.addPositionalArgument("file", "The file to open.");
+    parser.process(app);
+
+    MainWindow mainWin;
+    const QStringList posArgs = parser.positionalArguments();
+    for (const QString &fileName : posArgs)
+    {
+        mainWin.openFile(fileName);
+    }
+    
+    msgConsole = mainWin.getConsole();
     qInstallMessageHandler(outputMessage);
     QFont font;
     font.setFamily("consolas");
-    w.setFont(font);
-    w.show();
-    return a.exec();
+    mainWin.setFont(font);
+    mainWin.show();
+    return app.exec();
 }

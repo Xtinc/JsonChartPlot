@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "qhostaddress": "cpp"
+        "qhostaddress": "cpp",
+        "qplaintextedit": "cpp"
     }
 }
