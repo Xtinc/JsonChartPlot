@@ -22,7 +22,7 @@ Highlighter::Highlighter(QTextDocument *parent)
     highlightingRules.append(rule);
 
     commentFormat.setFontWeight(QFont::Bold);
-    plusFormat.setForeground(Qt::darkBlue);
+    plusFormat.setForeground(Qt::magenta);
     rule.pattern = QRegularExpression("^\\[.*\\] WARN.*");
     rule.format = plusFormat;
     highlightingRules.append(rule);

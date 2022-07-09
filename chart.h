@@ -3,6 +3,7 @@
 
 #include "qcustomplot.h"
 #include <QObject>
+#include <QStringList>
 
 constexpr int MAX_GRAPH_COUNT = 12;
 constexpr int MAX_CURVE_COUNT = 100;
@@ -38,9 +39,8 @@ class UChart : public QCustomPlot
 {
     Q_OBJECT
 public:
-    UChart(QWidget *parent = nullptr,const QString &title = "UChart", const QString &xtitle = "xAxis", const QString &ytitle = "yAxis");
-    void addData(double x, double y, int index);
-    void addGraph();
+    UChart(QWidget *parent = nullptr, const QString &title = "UChart", const QString &xtitle = "xAxis", const QString &ytitle = "yAxis");
+    void addData(double x, double y, const QString &name);
     void setMaxCurveCount(int counts);
     void setRefreshPeriod(int period);
     void setTitle(const QString &str)
@@ -66,11 +66,14 @@ private:
     bool Pending;
     QTimer mTimer;
     QCPTextElement title;
+    QStringList mNameList;
     QVector<QCPGraphData> mQueue[MAX_GRAPH_COUNT];
     QPointer<QCPGraph> mGraph[MAX_GRAPH_COUNT];
     QPointer<AxisTag> mTag[MAX_GRAPH_COUNT];
 
 private:
+    void addGraph();
+    void addData(double x, double y, int index);
     void axisLabelDoubleClick(QCPAxis *axis, QCPAxis::SelectablePart part);
     void contextMenuRequest(QPoint pos);
     void constructLegendMenu(QMenu *menu);

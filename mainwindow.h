@@ -27,7 +27,7 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private:
-    void openConnection();
+    void newGraph();
     void open();
     void updateRecentFileActions();
     void openRecentFile();
@@ -57,7 +57,7 @@ private:
     QPlainTextEdit *msgConsole;
 
     QMenu *windowMenu;
-    QAction *openConnAct;
+    QAction *newGraphAct;
     QAction *recentFileActs[MaxRecentFiles];
     QAction *recentFileSeparator;
     QAction *recentFileSubMenuAct;

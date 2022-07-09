@@ -148,12 +148,29 @@ UChart::UChart(QWidget *parent, const QString &str, const QString &xtitle, const
     mTimer.start(100);
 }
 
-void UChart::addData(double x, double y, int index)
+void UChart::addData(double x, double y, const QString &name)
 {
-    if (index < 0 || index > CurveCnt - 1)
+    auto iter = mNameList.indexOf(name);
+    if (iter != -1)
     {
+        addData(x, y, iter);
         return;
     }
+    if (mNameList.size() < MAX_GRAPH_COUNT)
+    {
+        mNameList.push_back(name);
+        addData(x, y, GraphCnt);
+        addGraph();
+        return;
+    }
+}
+
+void UChart::addData(double x, double y, int index)
+{
+    /*if (index < 0 || index > CurveCnt - 1)
+    {
+        return;
+    }*/
     if (mQueue[index].size() > CurveCnt)
     {
         mQueue[index].removeFirst();
@@ -275,6 +292,7 @@ void UChart::addGraph()
     {
         mGraph[GraphCnt] = QCustomPlot::addGraph(xAxis, axisRect()->axis(QCPAxis::atRight, 0));
         mGraph[GraphCnt]->setPen(QPen(getColorByIndex(GraphCnt)));
+        mGraph[GraphCnt]->setName(mNameList[GraphCnt]);
         mTag[GraphCnt] = new AxisTag(mGraph[GraphCnt]->valueAxis());
         mTag[GraphCnt]->setPen(mGraph[GraphCnt]->pen());
         replot();

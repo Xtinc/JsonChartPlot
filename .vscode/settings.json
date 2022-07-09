@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "qhostaddress": "cpp",
-        "qplaintextedit": "cpp"
+        "qplaintextedit": "cpp",
+        "iterator": "cpp"
     }
 }

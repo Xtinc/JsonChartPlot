@@ -1,61 +1,18 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the examples of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:BSD$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** BSD License Usage
-** Alternatively, you may use this file under the terms of the BSD license
-** as follows:
-**
-** "Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions are
-** met:
-**   * Redistributions of source code must retain the above copyright
-**     notice, this list of conditions and the following disclaimer.
-**   * Redistributions in binary form must reproduce the above copyright
-**     notice, this list of conditions and the following disclaimer in
-**     the documentation and/or other materials provided with the
-**     distribution.
-**   * Neither the name of The Qt Company Ltd nor the names of its
-**     contributors may be used to endorse or promote products derived
-**     from this software without specific prior written permission.
-**
-**
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
-
 #include <QtWidgets>
-
+#include "chart.h"
 #include "mdichild.h"
 
 MdiChild::MdiChild()
 {
     setAttribute(Qt::WA_DeleteOnClose);
+    chart = new UChart(this);
+    QVBoxLayout *layout = new QVBoxLayout;
+    layout->addWidget(chart);
+    layout->setContentsMargins(0, 0, 0, 0);
+    setLayout(layout);
+    curFile = "Untitled.png";
     isUntitled = true;
+    isModified = false;
 }
 
 void MdiChild::newFile()
@@ -63,42 +20,50 @@ void MdiChild::newFile()
     static int sequenceNumber = 1;
 
     isUntitled = true;
-    curFile = tr("document%1.txt").arg(sequenceNumber++);
+    curFile = tr("graph%1.png").arg(sequenceNumber++);
     setWindowTitle(curFile + "[*]");
-
-    connect(document(), &QTextDocument::contentsChanged,
-            this, &MdiChild::documentWasModified);
+    documentWasModified();
 }
 
 bool MdiChild::loadFile(const QString &fileName)
 {
-    QFile file(fileName);
-    if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        QMessageBox::warning(this, tr("MDI"),
-                             tr("Cannot read file %1:\n%2.")
-                             .arg(fileName)
-                             .arg(file.errorString()));
+    auto fileSuffix = QFileInfo(fileName).suffix();
+    if (fileSuffix != "json" && fileSuffix != "cbor")
+    {
+        qWarning() << "Unknow file type!";
+        return false;
+    }
+    QFile loadFile(fileName);
+
+    if (!loadFile.open(QIODevice::ReadOnly))
+    {
+        qWarning("Couldn't open save file.");
         return false;
     }
 
-    QTextStream in(&file);
+    QByteArray saveData = loadFile.readAll();
+
+    QJsonDocument loadDoc(fileSuffix == "json"
+                              ? QJsonDocument::fromJson(saveData)
+                              : QJsonDocument(QCborValue::fromCbor(saveData).toMap().toJsonObject()));
     QGuiApplication::setOverrideCursor(Qt::WaitCursor);
-    setPlainText(in.readAll());
+    if (!plotJsonObj(loadDoc.object()))
+    {
+        return false;
+    };
     QGuiApplication::restoreOverrideCursor();
-
     setCurrentFile(fileName);
-
-    connect(document(), &QTextDocument::contentsChanged,
-            this, &MdiChild::documentWasModified);
-
     return true;
 }
 
 bool MdiChild::save()
 {
-    if (isUntitled) {
+    if (isUntitled)
+    {
         return saveAs();
-    } else {
+    }
+    else
+    {
         return saveFile(curFile);
     }
 }
@@ -115,28 +80,9 @@ bool MdiChild::saveAs()
 
 bool MdiChild::saveFile(const QString &fileName)
 {
-    QString errorMessage;
-
     QGuiApplication::setOverrideCursor(Qt::WaitCursor);
-    QSaveFile file(fileName);
-    if (file.open(QFile::WriteOnly | QFile::Text)) {
-        QTextStream out(&file);
-        out << toPlainText();
-        if (!file.commit()) {
-            errorMessage = tr("Cannot write file %1:\n%2.")
-                           .arg(QDir::toNativeSeparators(fileName), file.errorString());
-        }
-    } else {
-        errorMessage = tr("Cannot open file %1 for writing:\n%2.")
-                       .arg(QDir::toNativeSeparators(fileName), file.errorString());
-    }
+    chart->savePng(fileName);
     QGuiApplication::restoreOverrideCursor();
-
-    if (!errorMessage.isEmpty()) {
-        QMessageBox::warning(this, tr("MDI"), errorMessage);
-        return false;
-    }
-
     setCurrentFile(fileName);
     return true;
 }
@@ -148,30 +94,33 @@ QString MdiChild::userFriendlyCurrentFile()
 
 void MdiChild::closeEvent(QCloseEvent *event)
 {
-    if (maybeSave()) {
+    if (maybeSave())
+    {
         event->accept();
-    } else {
+    }
+    else
+    {
         event->ignore();
     }
 }
 
 void MdiChild::documentWasModified()
 {
-    setWindowModified(document()->isModified());
+    isModified = true;
+    setWindowModified(isModified);
 }
 
 bool MdiChild::maybeSave()
 {
-    if (!document()->isModified())
+    if (!isModified)
         return true;
-    const QMessageBox::StandardButton ret
-            = QMessageBox::warning(this, tr("MDI"),
-                                   tr("'%1' has been modified.\n"
-                                      "Do you want to save your changes?")
-                                   .arg(userFriendlyCurrentFile()),
-                                   QMessageBox::Save | QMessageBox::Discard
-                                   | QMessageBox::Cancel);
-    switch (ret) {
+    const QMessageBox::StandardButton ret = QMessageBox::warning(this, tr("MDI"),
+                                                                 tr("'%1' has been modified.\n"
+                                                                    "Do you want to save your changes?")
+                                                                     .arg(userFriendlyCurrentFile()),
+                                                                 QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+    switch (ret)
+    {
     case QMessageBox::Save:
         return save();
     case QMessageBox::Cancel:
@@ -186,12 +135,46 @@ void MdiChild::setCurrentFile(const QString &fileName)
 {
     curFile = QFileInfo(fileName).canonicalFilePath();
     isUntitled = false;
-    document()->setModified(false);
+    isModified = false;
     setWindowModified(false);
-    setWindowTitle(userFriendlyCurrentFile() + "[*]");
+    setWindowTitle(userFriendlyCurrentFile());
+    chart->setTitle(userFriendlyCurrentFile());
 }
 
 QString MdiChild::strippedName(const QString &fullFileName)
 {
     return QFileInfo(fullFileName).fileName();
+}
+
+bool MdiChild::plotJsonObj(const QJsonObject &obj)
+{
+    if (obj.empty())
+    {
+        return false;
+    }
+    if (obj.contains("Plot") && obj["Plot"].isObject())
+    {
+        const auto &map = obj["Plot"].toVariant().toMap();
+        if (map.contains("Xvalue"))
+        {
+            double x = map["Xvalue"].toDouble();
+            for (auto iter = map.cbegin(); iter != map.cend(); ++iter)
+            {
+                if (iter.key() != "Xvalue" && iter.value().canConvert(QMetaType::Double))
+                {
+                    chart->addData(x, iter.value().toDouble(), iter.key());
+                    qInfo() << x << ":" << iter.value().toDouble() << ":" << iter.key();
+                }
+            }
+        }
+        else
+        {
+            qWarning() << "No Xaxis specified!";
+        }
+    }
+    else
+    {
+        qWarning() << R"(No section named "Plot" in Json object)";
+    }
+    return true;
 }
