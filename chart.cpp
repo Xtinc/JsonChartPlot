@@ -134,7 +134,7 @@ UChart::UChart(QWidget *parent, const QString &str, const QString &xtitle, const
     connect(this, &QCustomPlot::mousePress, this, &UChart::mousePress);
     connect(this, &QCustomPlot::mouseWheel, this, &UChart::mouseWheel);
     connect(xAxis, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), xAxis2, QOverload<const QCPRange &>::of(&QCPAxis::setRange));
-    connect(yAxis2, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), yAxis, QOverload<const QCPRange &>::of(&QCPAxis::setRange));
+    connect(yAxis, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), yAxis2, QOverload<const QCPRange &>::of(&QCPAxis::setRange));
     connect(this, &QCustomPlot::axisDoubleClick, this, &UChart::axisLabelDoubleClick);
     connect(this, &QCustomPlot::legendDoubleClick, this, &UChart::legendDoubleClick);
     connect(&title, &QCPTextElement::doubleClicked, this, &UChart::titleDoubleClick);
@@ -279,11 +279,17 @@ void UChart::mouseWheel()
     // if no axis is selected, both directions may be zoomed
 
     if (xAxis->selectedParts().testFlag(QCPAxis::spAxis))
+    {
         axisRect()->setRangeZoom(xAxis->orientation());
+    }
     else if (yAxis->selectedParts().testFlag(QCPAxis::spAxis))
+    {
         axisRect()->setRangeZoom(yAxis->orientation());
+    }
     else
+    {
         axisRect()->setRangeZoom(Qt::Horizontal | Qt::Vertical);
+    }
 }
 
 void UChart::addGraph()
@@ -369,15 +375,17 @@ void UChart::refreshPlotArea()
             if (i == 0)
             {
                 xAxis->rescale();
-                yAxis2->rescale();
+                yAxis->rescale();
             }
             else
             {
-                yAxis2->rescale(true);
+
+                yAxis->rescale(true);
                 xAxis->rescale(true);
             }
         }
         xAxis->setRange(xAxis->range().upper, 100, Qt::AlignRight);
+        yAxis->setRange(yAxis2->range().lower, yAxis2->range().upper);
         replot();
     }
     mTimer.start(RefPeriod);

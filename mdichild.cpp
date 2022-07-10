@@ -13,6 +13,7 @@ MdiChild::MdiChild()
     curFile = "Untitled.png";
     isUntitled = true;
     isModified = false;
+    timeCnt = 0;
 }
 
 void MdiChild::newFile()
@@ -21,8 +22,14 @@ void MdiChild::newFile()
 
     isUntitled = true;
     curFile = tr("graph%1.png").arg(sequenceNumber++);
-    setWindowTitle(curFile + "[*]");
-    documentWasModified();
+    setWindowTitle(curFile);
+    graphWasModified();
+    timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, [&]()
+            { plotJsonObj(QJsonObject{{"Xvalue", timeCnt}, {"Sin", (100.0/(timeCnt+1))*sin(0.1*timeCnt)}, {"Cos", (100.0/(timeCnt+1))*cos(0.1*timeCnt)}});
+            timeCnt++;
+            timer->start(4); });
+    timer->start(1000);
 }
 
 bool MdiChild::loadFile(const QString &fileName)
@@ -47,10 +54,16 @@ bool MdiChild::loadFile(const QString &fileName)
                               ? QJsonDocument::fromJson(saveData)
                               : QJsonDocument(QCborValue::fromCbor(saveData).toMap().toJsonObject()));
     QGuiApplication::setOverrideCursor(Qt::WaitCursor);
-    if (!plotJsonObj(loadDoc.object()))
+    QJsonArray jsonArray = loadDoc.array();
+
+    for (const QJsonValue &value : jsonArray)
     {
-        return false;
-    };
+        QJsonObject obj = value.toObject();
+        if (obj.contains("Xvalue"))
+        {
+            plotJsonObj(obj);
+        }
+    }
     QGuiApplication::restoreOverrideCursor();
     setCurrentFile(fileName);
     return true;
@@ -104,7 +117,7 @@ void MdiChild::closeEvent(QCloseEvent *event)
     }
 }
 
-void MdiChild::documentWasModified()
+void MdiChild::graphWasModified()
 {
     isModified = true;
     setWindowModified(isModified);
@@ -148,33 +161,14 @@ QString MdiChild::strippedName(const QString &fullFileName)
 
 bool MdiChild::plotJsonObj(const QJsonObject &obj)
 {
-    if (obj.empty())
+    const auto &map = obj.toVariantMap();
+    double x = map["Xvalue"].toDouble();
+    for (auto iter = map.cbegin(); iter != map.cend(); ++iter)
     {
-        return false;
-    }
-    if (obj.contains("Plot") && obj["Plot"].isObject())
-    {
-        const auto &map = obj["Plot"].toVariant().toMap();
-        if (map.contains("Xvalue"))
+        if (iter.key() != "Xvalue" && iter.value().canConvert(QMetaType::Double))
         {
-            double x = map["Xvalue"].toDouble();
-            for (auto iter = map.cbegin(); iter != map.cend(); ++iter)
-            {
-                if (iter.key() != "Xvalue" && iter.value().canConvert(QMetaType::Double))
-                {
-                    chart->addData(x, iter.value().toDouble(), iter.key());
-                    qInfo() << x << ":" << iter.value().toDouble() << ":" << iter.key();
-                }
-            }
+            chart->addData(x, iter.value().toDouble(), iter.key());
         }
-        else
-        {
-            qWarning() << "No Xaxis specified!";
-        }
-    }
-    else
-    {
-        qWarning() << R"(No section named "Plot" in Json object)";
     }
     return true;
 }

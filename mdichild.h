@@ -12,6 +12,8 @@ class MdiChild : public QWidget
 public:
     MdiChild();
 
+    int timeCnt;
+
     void newFile();
     bool loadFile(const QString &fileName);
     bool save();
@@ -24,7 +26,7 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private:
-    void documentWasModified();
+    void graphWasModified();
 
 private:
     bool maybeSave();
@@ -36,6 +38,7 @@ private:
     QString curFile;
     bool isUntitled;
     bool isModified;
+    QTimer *timer;
 };
 
 #endif
