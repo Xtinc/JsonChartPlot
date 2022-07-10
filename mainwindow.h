@@ -2,14 +2,17 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMap>
 
 class MdiChild;
+class UTable;
 QT_BEGIN_NAMESPACE
 class QAction;
 class QMenu;
 class QMdiArea;
 class QPlainTextEdit;
 class QMdiSubWindow;
+class QTableWidget;
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
@@ -42,6 +45,7 @@ private:
         MaxRecentFiles = 5
     };
 
+    void createUI();
     void createActions();
     void createStatusBar();
     void readSettings();
@@ -54,6 +58,8 @@ private:
     QMdiSubWindow *findMdiChild(const QString &fileName) const;
 
     QMdiArea *mdiArea;
+    QTabWidget *mTagContainer;
+    UTable *mTable;
     QPlainTextEdit *msgConsole;
 
     QMenu *windowMenu;
@@ -68,6 +74,7 @@ private:
     QAction *nextAct;
     QAction *previousAct;
     QAction *windowMenuSeparatorAct;
+    QMap<QString, QString> varPool;
 };
 
 #endif

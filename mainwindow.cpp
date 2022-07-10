@@ -3,26 +3,12 @@
 #include "mainwindow.h"
 #include "mdichild.h"
 #include "highlighter.h"
+#include "table.h"
 
 MainWindow::MainWindow()
     : mdiArea(new QMdiArea)
 {
-    mdiArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    connect(mdiArea, &QMdiArea::subWindowActivated, this, &MainWindow::updateMenus);
-    msgConsole = new QPlainTextEdit;
-    msgConsole->setReadOnly(true);
-    msgConsole->setFrameStyle(QFrame::NoFrame);
-    Highlighter *highlighter = new Highlighter(msgConsole->document());
-
-    QWidget *mainWidget = new QWidget;
-    QVBoxLayout *hlayout = new QVBoxLayout;
-    hlayout->addWidget(mdiArea, 3);
-    hlayout->addWidget(msgConsole, 1);
-    // hlayout->setSpacing(0);
-    mainWidget->setLayout(hlayout);
-    setCentralWidget(mainWidget);
-
+    createUI();
     createActions();
     createStatusBar();
     updateMenus();
@@ -31,6 +17,31 @@ MainWindow::MainWindow()
 
     setWindowTitle(tr("MDI"));
     setUnifiedTitleAndToolBarOnMac(true);
+}
+
+void MainWindow::createUI()
+{
+    mdiArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    connect(mdiArea, &QMdiArea::subWindowActivated, this, &MainWindow::updateMenus);
+    msgConsole = new QPlainTextEdit;
+    msgConsole->setReadOnly(true);
+    msgConsole->setFrameStyle(QFrame::NoFrame);
+    Highlighter *highlighter = new Highlighter(msgConsole->document());
+    mTable = new UTable(varPool);
+    mTable->setFrameStyle(QFrame::NoFrame);
+
+    mTagContainer = new QTabWidget;
+    mTagContainer->addTab(msgConsole, "Console");
+    mTagContainer->addTab(mTable, "WorkSpace");
+
+    QWidget *mainWidget = new QWidget;
+    QVBoxLayout *hlayout = new QVBoxLayout;
+    hlayout->addWidget(mdiArea, 3);
+    hlayout->addWidget(mTagContainer, 1);
+    // hlayout->setSpacing(0);
+    mainWidget->setLayout(hlayout);
+    setCentralWidget(mainWidget);
 }
 
 QPlainTextEdit *MainWindow::getConsole() const
@@ -214,7 +225,8 @@ void MainWindow::updateWindowMenu()
     {
         QMdiSubWindow *mdiSubWindow = windows.at(i);
         MdiChild *child = qobject_cast<MdiChild *>(mdiSubWindow->widget());
-        if(child){
+        if (child)
+        {
             QString text;
             if (i < 9)
             {
@@ -234,7 +246,7 @@ void MainWindow::updateWindowMenu()
 
 MdiChild *MainWindow::createMdiChild()
 {
-    MdiChild *child = new MdiChild;
+    MdiChild *child = new MdiChild(varPool);
     mdiArea->addSubWindow(child);
     return child;
 }
@@ -373,7 +385,7 @@ QMdiSubWindow *MainWindow::findMdiChild(const QString &fileName) const
     for (QMdiSubWindow *window : subWindows)
     {
         MdiChild *mdiChild = qobject_cast<MdiChild *>(window->widget());
-        if (mdiChild&&mdiChild->currentFile() == canonicalFilePath)
+        if (mdiChild && mdiChild->currentFile() == canonicalFilePath)
             return window;
     }
     return nullptr;

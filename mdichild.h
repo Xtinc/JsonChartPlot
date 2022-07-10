@@ -10,9 +10,7 @@ class MdiChild : public QWidget
     Q_OBJECT
 
 public:
-    MdiChild();
-
-    int timeCnt;
+    MdiChild(QMap<QString, QString> &map);
 
     void newFile();
     bool loadFile(const QString &fileName);
@@ -31,14 +29,19 @@ private:
 private:
     bool maybeSave();
     void setCurrentFile(const QString &fileName);
+    void refreshVar();
     bool plotJsonObj(const QJsonObject &obj);
     QString strippedName(const QString &fullFileName);
+
+    int timeCnt;
 
     UChart *chart;
     QString curFile;
     bool isUntitled;
     bool isModified;
-    QTimer *timer;
+    QTimer *mTimer;
+    QMap<QString, QString> &mMap;
+    QMap<QString, double> mPriMap;
 };
 
 #endif
