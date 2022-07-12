@@ -18,10 +18,11 @@ public:
     bool save();
     bool saveAs();
     bool saveFile(const QString &fileName);
+    bool dynamic() { return isDynamic; }
     QString userFriendlyCurrentFile();
     QString currentFile() { return curFile; }
     bool plotJsonObj(const QJsonObject &obj);
-    bool plotJsonObj2();
+    bool plotJsonObjDynamic();
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -38,6 +39,7 @@ private:
     QString curFile;
     bool isUntitled;
     bool isModified;
+    bool isDynamic;
     QMap<QString, QString> mp;
 };
 

@@ -11,12 +11,8 @@ UTable::UTable(QWidget *parent) : QTableWidget(0, 3, parent)
     setItemDelegate(new varDelegate);
     setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
     setHorizontalHeaderLabels(QStringList{"Name", "Expression", "Value"});
-    addVariables("TimeCnt", "$TimeCnt", false);
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &UTable::customContextMenuRequested, this, &UTable::contextMenu);
-    Timer = new QTimer(this);
-    Timer->start(1000);
-    connect(Timer, &QTimer::timeout, this, &UTable::refreshTable);
 }
 
 void UTable::addVariables(const QString &name, const QString &expression, bool userInvoked)
@@ -90,8 +86,6 @@ void UTable::findPlotVariables()
 
 void UTable::refreshTable()
 {
-    QExpression::m_variables["$TimeCnt"] += 1;
-
     for (int row = 0; row < rowCount(); ++row)
     {
         auto name = item(row, 0)->text();
@@ -101,7 +95,6 @@ void UTable::refreshTable()
             item(row, 2)->setText(QString::number(e.result()));
         }
     }
-    Timer->start(1000);
 }
 
 varDelegate::varDelegate(QObject *parent)

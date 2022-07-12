@@ -384,7 +384,7 @@ void UChart::refreshPlotArea()
                 xAxis->rescale(true);
             }
         }
-        xAxis->setRange(xAxis->range().upper, 100, Qt::AlignRight);
+        xAxis->setRange(xAxis->range().lower, xAxis->range().upper);
         yAxis->setRange(yAxis2->range().lower, yAxis2->range().upper);
         replot();
     }

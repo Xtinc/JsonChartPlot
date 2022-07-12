@@ -32,12 +32,13 @@ void MainWindow::createUI()
     Highlighter *highlighter = new Highlighter(msgConsole->document());
     mTable = new UTable();
     mTable->setFrameStyle(QFrame::NoFrame);
+    mTable->addVariables("Count", "$Count", false);
     connect(mTable, &UTable::plotVariables, this,
             [this](const QMap<QString, QString> &list)
             {
                 MdiChild *child = createMdiChild();
                 child->newFile(list);
-                child->show();
+                child->showMaximized();
             });
 
     mTagContainer = new QTabWidget;
@@ -74,15 +75,17 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::newGraph()
 {
-    // MdiChild *child = createMdiChild();
-    // child->newFile();
-    // child->show();
     static int timeCnt = 0;
-    timer = new QTimer(this);
+    timer = new QTimer;
     connect(timer, &QTimer::timeout, this, [this]()
             {
-        updateJsonData(QJsonObject{{"Xvalue",timeCnt},{"SIN",sin(0.01*timeCnt)},{"COS",cos(0.01*timeCnt)}});
+        updateJsonData(QJsonObject{{"time",timeCnt},{"SIN",sin(0.01*timeCnt)},{"COS",cos(0.01*timeCnt)}});
+        if(timeCnt%100==0){
+            qDebug()<<timeCnt;
+            mTable->refreshTable();
+        }
         timer->start(4);
+        QExpression::m_variables["$Count"] += 1;
         timeCnt++; });
     timer->start(1000);
 }
@@ -102,9 +105,9 @@ void MainWindow::updateJsonData(const QJsonObject &obj)
     {
         QMdiSubWindow *mdiSubWindow = windows.at(i);
         MdiChild *child = qobject_cast<MdiChild *>(mdiSubWindow->widget());
-        if (child)
+        if (child->dynamic())
         {
-            child->plotJsonObj2();
+            child->plotJsonObjDynamic();
         }
     }
 }
@@ -135,7 +138,7 @@ bool MainWindow::loadFile(const QString &fileName)
     const bool succeeded = child->loadFile(fileName);
     if (succeeded)
     {
-        child->show();
+        child->showMaximized();
     }
     else
     {
@@ -230,8 +233,7 @@ void MainWindow::openRecentFile()
 void MainWindow::about()
 {
     QMessageBox::about(this, tr("About MDI"),
-                       tr("The <b>MDI</b> example demonstrates how to write multiple "
-                          "document interface applications using Qt."));
+                       tr("The <b>MDI</b> Scalees@2022"));
 }
 
 void MainWindow::updateMenus()

@@ -3,7 +3,7 @@
 #include "mdichild.h"
 #include "expression.h"
 
-MdiChild::MdiChild() : isUntitled(true), isModified(false)
+MdiChild::MdiChild() : isUntitled(true), isModified(false), isDynamic(false)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     chart = new UChart(this);
@@ -11,6 +11,7 @@ MdiChild::MdiChild() : isUntitled(true), isModified(false)
     layout->addWidget(chart);
     layout->setContentsMargins(0, 0, 0, 0);
     setLayout(layout);
+    //setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     curFile = "Untitled.png";
 }
 
@@ -19,6 +20,7 @@ void MdiChild::newFile(const QMap<QString, QString> &varmp)
     static int sequenceNumber = 1;
 
     isUntitled = true;
+    isDynamic = true;
     curFile = tr("graph%1.png").arg(sequenceNumber++);
     setWindowTitle(curFile);
     graphWasModified();
@@ -166,15 +168,23 @@ bool MdiChild::plotJsonObj(const QJsonObject &obj)
     return true;
 }
 
-bool MdiChild::plotJsonObj2()
+bool MdiChild::plotJsonObjDynamic()
 {
-    double x = QExpression::m_variables["$Xvalue"];
+    QExpression e(mp["Xvalue"]);
+    if (!e.eval())
+    {
+        return false;
+    }
+    double x = e.result();
     for (auto iter = mp.cbegin(); iter != mp.cend(); ++iter)
     {
-        QExpression e(iter.value());
-        if (e.eval())
+        if (iter.key() != "Xvalue")
         {
-            chart->addData(x, e.result(), iter.key());
+            QExpression e(iter.value());
+            if (e.eval())
+            {
+                chart->addData(x, e.result(), iter.key());
+            }
         }
     }
     return true;

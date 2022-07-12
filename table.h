@@ -3,7 +3,6 @@
 
 #include <QTableWidget>
 #include <QStyledItemDelegate>
-#include <QTimer>
 
 class UTable : public QTableWidget
 {
@@ -11,13 +10,12 @@ class UTable : public QTableWidget
 public:
     UTable(QWidget *parent = nullptr);
     void addVariables(const QString &name, const QString &expr, bool userInvoked = true);
+    void refreshTable();
 signals:
-    void plotVariables(const QMap<QString,QString> &varlists);
+    void plotVariables(const QMap<QString, QString> &varlists);
 
 private:
-    QTimer *Timer;
     void contextMenu(const QPoint &pos);
-    void refreshTable();
     void findPlotVariables();
 };
 
