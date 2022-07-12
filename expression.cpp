@@ -7,6 +7,7 @@
 #include <cmath>
 
 FunctionList QExpression::m_functions;
+QMap<QString, double> QExpression::m_variables;
 
 bool isNumber(const QString &arg)
 {
@@ -61,6 +62,7 @@ bool QExpression::eval()
                 double value = bi->function()(stack.pop(), stack.pop());
                 stack.push(value);
             }
+            break;
             case BaseFunction::OtherFunction:
             {
                 const Function *fn = static_cast<const Function *>(op);
@@ -150,6 +152,11 @@ bool QExpression::toReversePolishNotation()
                 continue;
             }
         }
+        if (m_variables.contains(symbol))
+        {
+            result += QString::number(m_variables[symbol]) + " ";
+            continue;
+        }
         bool ok;
         symbol.toDouble(&ok);
         if (ok)
@@ -158,6 +165,7 @@ bool QExpression::toReversePolishNotation()
             continue;
         }
         m_error = UnknownIdentifier;
+        qWarning() << symbol;
         return false;
     }
     while (!stack.isEmpty())
@@ -212,10 +220,13 @@ FunctionList::FunctionList()
             result *= i;
         }
         return result; });
+    
+    BinaryOperator *openBracket = new BinaryOperator("(", 0, Q_NULLPTR);
+    BinaryOperator *closeBracket = new BinaryOperator(")", 0, Q_NULLPTR);
 
-    UnaryOperator *sinFunc = new UnaryOperator("sin", 1, [](double a)
+    UnaryOperator *sinFunc = new UnaryOperator("sin", 4, [](double a)
                                                { return sin(a); });
-    UnaryOperator *cosFunc = new UnaryOperator("cos", 1, [](double a)
+    UnaryOperator *cosFunc = new UnaryOperator("cos", 4, [](double a)
                                                { return cos(a); });
     Function *sqrtFunc = new Function("sqrt", 1, [](const QList<double> &list)
                                       { return sqrt(list.first()); });
@@ -233,6 +244,8 @@ FunctionList::FunctionList()
     m_funclist.append(sqrtFunc);
     m_funclist.append(maxOfThree);
     m_funclist.append(fact);
+    m_funclist.append(openBracket);
+    m_funclist.append(closeBracket);
 }
 
 FunctionList::~FunctionList() { qDeleteAll(m_funclist); }

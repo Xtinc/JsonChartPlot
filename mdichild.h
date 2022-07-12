@@ -2,6 +2,7 @@
 #define MDICHILD_H
 
 #include <QJsonObject>
+#include <QMap>
 
 class UChart;
 
@@ -10,15 +11,17 @@ class MdiChild : public QWidget
     Q_OBJECT
 
 public:
-    MdiChild(QMap<QString, QString> &map);
+    MdiChild();
 
-    void newFile();
+    void newFile(const QMap<QString, QString> &varmap);
     bool loadFile(const QString &fileName);
     bool save();
     bool saveAs();
     bool saveFile(const QString &fileName);
     QString userFriendlyCurrentFile();
     QString currentFile() { return curFile; }
+    bool plotJsonObj(const QJsonObject &obj);
+    bool plotJsonObj2();
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -29,19 +32,13 @@ private:
 private:
     bool maybeSave();
     void setCurrentFile(const QString &fileName);
-    void refreshVar();
-    bool plotJsonObj(const QJsonObject &obj);
     QString strippedName(const QString &fullFileName);
-
-    int timeCnt;
 
     UChart *chart;
     QString curFile;
     bool isUntitled;
     bool isModified;
-    QTimer *mTimer;
-    QMap<QString, QString> &mMap;
-    QMap<QString, double> mPriMap;
+    QMap<QString, QString> mp;
 };
 
 #endif

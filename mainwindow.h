@@ -2,7 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QMap>
 
 class MdiChild;
 class UTable;
@@ -13,6 +12,7 @@ class QMdiArea;
 class QPlainTextEdit;
 class QMdiSubWindow;
 class QTableWidget;
+class QTimer;
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
@@ -37,6 +37,7 @@ private:
     void about();
     void updateMenus();
     void updateWindowMenu();
+    void updateJsonData(const QJsonObject &obj);
     MdiChild *createMdiChild();
 
 private:
@@ -74,7 +75,7 @@ private:
     QAction *nextAct;
     QAction *previousAct;
     QAction *windowMenuSeparatorAct;
-    QMap<QString, QString> varPool;
+    QTimer *timer;
 };
 
 #endif

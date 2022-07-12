@@ -2,6 +2,7 @@
     "files.associations": {
         "qhostaddress": "cpp",
         "qplaintextedit": "cpp",
-        "iterator": "cpp"
+        "iterator": "cpp",
+        "qdebug": "cpp"
     }
 }

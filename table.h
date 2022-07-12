@@ -9,14 +9,16 @@ class UTable : public QTableWidget
 {
     Q_OBJECT
 public:
-    UTable(QMap<QString, QString> &map, QWidget *parent = nullptr);
-    void addVariables(const QString &name, const QString &expr);
+    UTable(QWidget *parent = nullptr);
+    void addVariables(const QString &name, const QString &expr, bool userInvoked = true);
+signals:
+    void plotVariables(const QMap<QString,QString> &varlists);
 
 private:
     QTimer *Timer;
-    QMap<QString, QString> &mMap;
     void contextMenu(const QPoint &pos);
     void refreshTable();
+    void findPlotVariables();
 };
 
 class varDelegate : public QStyledItemDelegate

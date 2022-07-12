@@ -3,7 +3,7 @@
 #include "mdichild.h"
 #include "expression.h"
 
-MdiChild::MdiChild(QMap<QString, QString> &map) : isUntitled(true), isModified(false), mMap(map)
+MdiChild::MdiChild() : isUntitled(true), isModified(false)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     chart = new UChart(this);
@@ -14,7 +14,7 @@ MdiChild::MdiChild(QMap<QString, QString> &map) : isUntitled(true), isModified(f
     curFile = "Untitled.png";
 }
 
-void MdiChild::newFile()
+void MdiChild::newFile(const QMap<QString, QString> &varmp)
 {
     static int sequenceNumber = 1;
 
@@ -22,13 +22,7 @@ void MdiChild::newFile()
     curFile = tr("graph%1.png").arg(sequenceNumber++);
     setWindowTitle(curFile);
     graphWasModified();
-    mTimer = new QTimer(this);
-    timeCnt = 0;
-    connect(mTimer, &QTimer::timeout, this, [&]()
-            { plotJsonObj(QJsonObject{{"Xvalue", timeCnt}, {"Sin", (100.0/(timeCnt+1))*sin(0.1*timeCnt)}, {"Cos", (100.0/(timeCnt+1))*cos(0.1*timeCnt)}});
-            timeCnt++;
-            mTimer->start(4); });
-    mTimer->start(1000);
+    mp = varmp;
 }
 
 bool MdiChild::loadFile(const QString &fileName)
@@ -172,6 +166,16 @@ bool MdiChild::plotJsonObj(const QJsonObject &obj)
     return true;
 }
 
-void MdiChild::refreshVar()
+bool MdiChild::plotJsonObj2()
 {
+    double x = QExpression::m_variables["$Xvalue"];
+    for (auto iter = mp.cbegin(); iter != mp.cend(); ++iter)
+    {
+        QExpression e(iter.value());
+        if (e.eval())
+        {
+            chart->addData(x, e.result(), iter.key());
+        }
+    }
+    return true;
 }

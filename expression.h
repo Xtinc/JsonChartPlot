@@ -2,6 +2,7 @@
 #define EXPRESSION_H
 
 #include <QList>
+#include <QMap>
 #include <QString>
 
 class BaseFunction
@@ -101,6 +102,8 @@ class QExpression
 {
 public:
     static FunctionList m_functions;
+    static QMap<QString, double> m_variables;
+
     enum EvaluationError
     {
         NoError = 0,

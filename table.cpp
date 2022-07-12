@@ -1,24 +1,39 @@
 #include "table.h"
+#include "expression.h"
 #include <QHeaderView>
 #include <QMenu>
 #include <QLineEdit>
+#include <QDebug>
+#include <QInputDialog>
 
-UTable::UTable(QMap<QString, QString> &map, QWidget *parent) : mMap(map), QTableWidget(0, 3, parent)
+UTable::UTable(QWidget *parent) : QTableWidget(0, 3, parent)
 {
     setItemDelegate(new varDelegate);
     setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
     setHorizontalHeaderLabels(QStringList{"Name", "Expression", "Value"});
-    addVariables("TimeCnt", "$(TimeCnt)");
+    addVariables("TimeCnt", "$TimeCnt", false);
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &UTable::customContextMenuRequested, this, &UTable::contextMenu);
-    /*Timer = new QTimer(this);
+    Timer = new QTimer(this);
     Timer->start(1000);
-    connect(Timer, &QTimer::timeout, this, &UTable::refreshTable);*/
+    connect(Timer, &QTimer::timeout, this, &UTable::refreshTable);
 }
 
-void UTable::addVariables(const QString &name, const QString &expression)
+void UTable::addVariables(const QString &name, const QString &expression, bool userInvoked)
 {
-    QTableWidgetItem *varName = new QTableWidgetItem(name);
+    QString realname = name;
+    if (userInvoked)
+    {
+        bool ok;
+        QString text = QInputDialog::getText(this, "Set Variable Name",
+                                             "Var name:", QLineEdit::Normal,
+                                             "tmp", &ok);
+        if (ok && !text.isEmpty())
+        {
+            realname = text;
+        }
+    }
+    QTableWidgetItem *varName = new QTableWidgetItem(realname);
     varName->setFlags(varName->flags() ^ (Qt::ItemIsEditable | Qt::ItemIsSelectable));
     varName->setTextAlignment(Qt::AlignCenter);
 
@@ -34,7 +49,7 @@ void UTable::addVariables(const QString &name, const QString &expression)
     setItem(row, 0, varName);
     setItem(row, 1, varExpr);
     setItem(row, 2, varValue);
-    mMap[name] = expression;
+    QExpression::m_variables["$" + realname] = 0.0;
 }
 
 void UTable::contextMenu(const QPoint &pos)
@@ -52,22 +67,41 @@ void UTable::contextMenu(const QPoint &pos)
     }
     if (action == addAction)
     {
-        addVariables("", "");
+        addVariables("tmp", "");
+        return;
     }
+    if (action == showAction)
+    {
+        findPlotVariables();
+        return;
+    }
+}
+
+void UTable::findPlotVariables()
+{
+    QMap<QString, QString> list;
+    for (const auto &it : selectedItems())
+    {
+        auto row = it->row();
+        list.insert(item(row, 0)->text(), item(row, 1)->text());
+    }
+    emit plotVariables(list);
 }
 
 void UTable::refreshTable()
 {
-    /*
+    QExpression::m_variables["$TimeCnt"] += 1;
+
     for (int row = 0; row < rowCount(); ++row)
     {
-        auto name = itemAt(row, 0)->text();
-        if (mMap.contains(name))
+        auto name = item(row, 0)->text();
+        QExpression e(item(row, 1)->text());
+        if (e.eval())
         {
-            itemAt(row, 2)->setText(QString::number(mMap[name].second));
+            item(row, 2)->setText(QString::number(e.result()));
         }
     }
-    Timer->start(1000);*/
+    Timer->start(1000);
 }
 
 varDelegate::varDelegate(QObject *parent)

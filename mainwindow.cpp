@@ -4,6 +4,7 @@
 #include "mdichild.h"
 #include "highlighter.h"
 #include "table.h"
+#include "expression.h"
 
 MainWindow::MainWindow()
     : mdiArea(new QMdiArea)
@@ -21,6 +22,7 @@ MainWindow::MainWindow()
 
 void MainWindow::createUI()
 {
+    static int timeCnt = 0;
     mdiArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     mdiArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     connect(mdiArea, &QMdiArea::subWindowActivated, this, &MainWindow::updateMenus);
@@ -28,8 +30,15 @@ void MainWindow::createUI()
     msgConsole->setReadOnly(true);
     msgConsole->setFrameStyle(QFrame::NoFrame);
     Highlighter *highlighter = new Highlighter(msgConsole->document());
-    mTable = new UTable(varPool);
+    mTable = new UTable();
     mTable->setFrameStyle(QFrame::NoFrame);
+    connect(mTable, &UTable::plotVariables, this,
+            [this](const QMap<QString, QString> &list)
+            {
+                MdiChild *child = createMdiChild();
+                child->newFile(list);
+                child->show();
+            });
 
     mTagContainer = new QTabWidget;
     mTagContainer->addTab(msgConsole, "Console");
@@ -65,9 +74,39 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::newGraph()
 {
-    MdiChild *child = createMdiChild();
-    child->newFile();
-    child->show();
+    // MdiChild *child = createMdiChild();
+    // child->newFile();
+    // child->show();
+    static int timeCnt = 0;
+    timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, [this]()
+            {
+        updateJsonData(QJsonObject{{"Xvalue",timeCnt},{"SIN",sin(0.01*timeCnt)},{"COS",cos(0.01*timeCnt)}});
+        timer->start(4);
+        timeCnt++; });
+    timer->start(1000);
+}
+
+void MainWindow::updateJsonData(const QJsonObject &obj)
+{
+    const auto &map = obj.toVariantMap();
+    for (auto iter = map.cbegin(); iter != map.cend(); ++iter)
+    {
+        if (iter.value().canConvert(QMetaType::Double))
+        {
+            QExpression::m_variables["$" + iter.key()] = iter.value().toDouble();
+        }
+    }
+    QList<QMdiSubWindow *> windows = mdiArea->subWindowList();
+    for (int i = 0; i < windows.size(); ++i)
+    {
+        QMdiSubWindow *mdiSubWindow = windows.at(i);
+        MdiChild *child = qobject_cast<MdiChild *>(mdiSubWindow->widget());
+        if (child)
+        {
+            child->plotJsonObj2();
+        }
+    }
 }
 
 void MainWindow::open()
@@ -246,7 +285,7 @@ void MainWindow::updateWindowMenu()
 
 MdiChild *MainWindow::createMdiChild()
 {
-    MdiChild *child = new MdiChild(varPool);
+    MdiChild *child = new MdiChild;
     mdiArea->addSubWindow(child);
     return child;
 }
