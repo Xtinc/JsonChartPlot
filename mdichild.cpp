@@ -7,11 +7,12 @@ MdiChild::MdiChild() : isUntitled(true), isModified(false), isDynamic(false)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     chart = new UChart(this);
+    chart->setMaxCurveCount(10000);
     QVBoxLayout *layout = new QVBoxLayout;
     layout->addWidget(chart);
     layout->setContentsMargins(0, 0, 0, 0);
     setLayout(layout);
-    //setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    // setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     curFile = "Untitled.png";
 }
 

@@ -183,6 +183,11 @@ void UChart::setRefreshPeriod(int period)
     RefPeriod = period;
 }
 
+void UChart::setMaxCurveCount(int cnt)
+{
+    CurveCnt = cnt;
+}
+
 void UChart::titleDoubleClick(QMouseEvent *)
 {
     if (QCPTextElement *title = qobject_cast<QCPTextElement *>(sender()))
